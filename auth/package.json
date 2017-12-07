@@ -1,0 +1,19 @@
+{
+  "name": "proj3",
+  "version": "1.0.0",
+  "description": "Authentication",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^1.0.3",
+    "express": "^4.16.2",
+    "fs": "0.0.1-security",
+    "minimist": "^1.2.0",
+    "mongodb": "^2.2.33",
+    "rand-token": "^0.3.0"
+  }
+}

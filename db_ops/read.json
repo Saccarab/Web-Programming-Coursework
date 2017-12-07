@@ -1,0 +1,9 @@
+{
+  "op": "read",
+  "collection": "test",
+  "args": [
+    { "a": 21 },
+    { "b": 7 },
+    { "c": 3 }
+  ]
+}

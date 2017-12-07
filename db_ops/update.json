@@ -1,0 +1,7 @@
+{
+  "op": "update",
+  "collection": "test",
+  "args": { },
+  "fn": [ "x",
+         "{ return typeof(x['b']) !== 'undefined' ? { b: 42 } : x; }" ]
+}
