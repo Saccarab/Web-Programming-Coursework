@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>User Authenticator</title>
+    <script src="https://unpkg.com/react@16/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel">
+    let url;
+    (function() {
+
+    const WS_URL = 'https://localhost:1236';
+
+    function getWsUrl() {
+      const params = (new URL(document.location)).searchParams;
+      return params.get('ws-url') || WS_URL;
+    }
+
+    url = getWsUrl();
+
+    })();  //end IIFE
+
+     function validateEmail(email) {
+      let re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+      if (re.test(email)){
+        return true
+      }
+      else{
+        alert("bad email format")
+        return false;
+      }
+    }
+
+    function equalPw(pw1,pw2){
+      if (pw1 === pw2)
+       return true
+      else{
+       alert("passwords didnt match")
+       return false;
+      }
+    }
+    
+    function validatePassword(password) {
+      let arr = password.split("")
+      if(password.length >= 8 && arr.some( x => x == x *1) && arr.every(x => x !== " "))
+        return true;
+      else{
+        alert("bad pw format: It must be longer or equal to 8 characters without anywhitespaces and include atleast one digit")
+        return false;
+      }
+    }
+
+      class Account extends React.Component {
+
+            constructor(props) {
+            super(props);
+            this.state = {name: '',
+                          lname: ''}
+
+            this.app = props.app; 
+          }
+
+          componentDidMount(){
+            const self = this
+            let req = url + '/users/' + localStorage.user
+            axios.request({ url: req,
+             method: 'get',
+             headers: {
+               Authorization: `Bearer ${localStorage.token}`}
+             })
+            .then(function(response){
+              self.setState({
+                name1 : response.data.firstName,
+                name2 : response.data.lastName
+              })
+            })
+            .catch(function(err){
+              console.log(err)
+              ReactDOM.render(
+                  <Login />,
+                document.getElementById('root')
+                )
+            });
+
+            document.getElementById('logoutbut').addEventListener("click", function(){
+              localStorage.token = ''
+              ReactDOM.render(
+                  <Login />,
+                document.getElementById('root')
+                )
+            });
+          }
+
+          render() {
+            return (
+              <div name = "verify">
+                <h1>Account </h1>
+                <h2>first name: {this.state.name1} </h2>
+                <h2>last name:  {this.state.name2} </h2>
+
+                <button id = "logoutbut">Log Out</button>
+              </div>
+            );
+          }
+        }
+
+      class Login extends React.Component {
+            constructor(props) {
+            super(props);
+            this.app = props.app;
+            this.state = {email: '',
+                          pw : '',
+                          empty : ''}
+
+            this.handleChange = this.handleChange.bind(this);
+            this.handleSubmit = this.handleSubmit.bind(this);
+          }
+        
+          componentDidMount(){
+            document.getElementById('registerbut').addEventListener("click", function(){
+              ReactDOM.render(
+                  <Registration />,
+                document.getElementById('root')
+                );
+            });
+          }
+
+          handleChange(event) {
+            let change = {}
+            change[event.target.name] = event.target.value.trim()
+            if (event.target.value.trim().length == 0)
+              change[event.target.name] = "fill empty!!!"
+
+            this.setState(change)
+          }
+
+          handleSubmit(event) {
+            event.preventDefault();
+
+            let req = url+'/users/'+ this.state.email + '/auth'
+            let prev = this.state.email;
+
+            if (validateEmail(prev) && validatePassword(this.state.pw)){
+
+              axios.put(req, { pw: this.state.pw }, { maxRedirects: 0 }).
+              then(function (response) {
+                let token = response.data.authToken;
+                localStorage.setItem("token", token)
+                localStorage.setItem("user", prev)
+                ReactDOM.render(
+                  <Account />,
+                document.getElementById('root')
+                );
+              })
+              .catch(function(err){
+                const status = err.response.status;
+                if (status === 401 || status === 404) {
+                  alert(err.response.data.status)
+                }
+                else {
+                  alert(err.response.data)
+                }
+              });
+            }
+            else
+              alert('invalid pw or email format')
+          }
+
+          render() {
+            return (
+              <div>
+              <form onSubmit={this.handleSubmit}>
+              <div name = "verify" >
+              
+                <label>
+                  Email:
+                  <input
+                  name = "email"
+                  type= "email"
+                  value={this.state.email}
+                  onChange={this.handleChange.bind(this)}
+                  onBlur = {this.handleChange.bind(this)} 
+                  value={this.state.email} />
+                </label><br></br><br></br>
+
+                <label>
+                  Password:
+                  <input
+                  name = "pw"
+                  type="password" value={this.state.pw}
+                  onChange={this.handleChange.bind(this)}
+                  value={this.state.pw} />
+                </label><br></br><br></br>
+                </div>
+
+                <input type="submit" value="Submit" />
+
+                <br></br>
+                <br></br>
+                <button id = "registerbut">Register</button>
+              </form>
+              <h4>{this.state.empty}</h4>
+              </div>
+            );
+          }
+        }
+        
+      class Registration extends React.Component {
+        constructor(props) {
+          super(props);
+          this.state = {active: <Login app={this} />,
+                        name: '',
+                        lname: '',
+                        email : '',
+                        pw : '',
+                        pwc : ''
+                        }
+
+          this.handleChange = this.handleChange.bind(this);
+          this.handleSubmit = this.handleSubmit.bind(this);
+        }
+
+      handleChange(event) {
+        let change = {}
+        change[event.target.name] = event.target.value.trim()
+        if (event.target.value.trim().length == 0)
+          change[event.target.name] = "fill empty!!!"
+        this.setState(change)
+      }
+
+      handleSubmit(event) {
+        event.preventDefault();
+        let empty = false;
+        if (this.state.name.length > 0 && this.state.lname.length > 0)
+          empty = true;
+        else 
+          alert("empty fields")
+
+        //sloppy implementation but w/e
+        if (this.state.name.value == "fill empty!!!" || this.state.lname.value == "fill empty!!!"){
+          alert("empty fields")
+          empty = false;
+        }
+        else {
+          empty = true
+        }
+
+        if (validateEmail(this.state.email) && validatePassword(this.state.pw) && equalPw(this.state.pw, this.state.pwc) && empty){
+
+          let req = url+'/users/'+ this.state.email+ '?pw=' + this.state.pw
+          const userInfo = {
+            firstName: this.state.name,
+            lastName: this.state.lname
+          };
+          axios.put(req, userInfo, { maxRedirects: 0 })
+          .then(function (response) {
+            console.log(response)
+            ReactDOM.render(
+                <Login />,
+              document.getElementById('root')
+              );
+          })
+          .catch(function(err) {
+            const status = err.response.status;
+            if (status === 303) {
+              alert(err.response.data)
+             return err.response.data;
+            }
+            else {
+              alert(err)
+             throw err;
+            }
+          });
+        }  
+      }
+
+      componentDidMount(){
+        document.getElementById('loginbut').addEventListener("click", function(){
+          ReactDOM.render(
+              <Login />,
+            document.getElementById('root')
+            );
+        });
+          let ele = document.getElementsByName("name")
+
+        }
+
+      render() {
+        return (
+          <div>
+          <form onSubmit={this.handleSubmit}>
+                <div name = "verify">
+                  <label>
+                    Name:
+                    <input
+                      name = "name"
+                      type = "text"
+                      value = {this.state.name}
+                      onChange = {this.handleChange.bind(this)} 
+                      onBlur = {this.handleChange.bind(this)} 
+                      value={this.state.name} />
+                  </label><br></br><br></br>
+
+                  <label>
+                    LastName:
+                    <input
+                      type="text"
+                      name = "lname"
+                      value={this.state.surname}
+                      onChange={this.handleChange.bind(this)}
+                      onBlur = {this.handleChange.bind(this)} 
+                      value={this.state.lname} />
+                  </label><br></br><br></br>
+
+                  <label>
+                    Email:
+                    <input
+                    name = "email"
+                    type="email"
+                    value={this.state.email}
+                    onChange={this.handleChange.bind(this)}
+                    onBlur = {this.handleChange.bind(this)} 
+                    value={this.state.email} />
+                  </label><br></br><br></br>
+
+                  <label>
+                    Password:
+                    <input
+                    name = "pw"
+                    type="password" value={this.state.pw}
+                    onChange={this.handleChange.bind(this)}
+                    value={this.state.pw} />
+                  </label><br></br><br></br>
+
+                  <label>
+                    Password Confirm:
+                    <input
+                     name = "pwc"
+                     type="password" value={this.state.pwc}
+                     onChange={this.handleChange.bind(this)}
+                     value={this.state.pwc} />
+                  </label><br></br><br></br>
+                  </div>
+                  <input type="submit" value="Submit" />
+                </form><br></br>
+                
+                <button id = "loginbut">Login</button>
+                <h4>{this.state.empty}</h4>
+                </div>
+              );
+            }
+          }
+          
+          ReactDOM.render(
+            <Account />,
+      document.getElementById('root')
+          );
+
+    </script>
+  </body>
+  </html>
